@@ -1,0 +1,44 @@
+*{
+    margin:0;
+    padding:0
+}
+div#test{
+    position:relative;
+    width:1000px;
+    height:600px;
+    left:15%;
+    top:75px;
+    overflow: hidden;
+}
+div>span{
+    position:absolute;
+    white-space: nowrap;
+    width:200px;
+    height:20px;
+    left:100%;
+    animation: 10s test;
+    animation-timing-function: linear;
+    color:rgb(36, 38, 41);
+}
+@keyframes test {
+    0%{
+        left:100%;
+    }
+    100%{
+        left:-50%;
+    }
+}
+div input{
+    position:absolute;
+    bottom: 30px;
+}
+.box{
+    background-color: black;
+    width: 1000px;
+    height:506.25px
+}
+div.box>video{
+    position:absolute;
+    width: 900px;
+    left:50px;
+}
