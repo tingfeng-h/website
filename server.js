@@ -6,14 +6,13 @@ const bodyParser=require('./nodejs/node_modules/koa-bodyparser');
 const fs=require('fs');
 
 const ser=new koa();
-var con=mysql.createConnection({
+var pool=mysql.createPool({
     host:'localhost',
     user:'root',
     password:'root',
     database:'test',
     port:'3306'
 });
-con.connect();
 
 
 ser.use(async (ctx,next)=>{
@@ -102,17 +101,29 @@ router.post('/getbarrage',async (ctx,next)=>{
 router.post('/barrage',async (ctx,next)=>{
     console.log(JSON.parse(JSON.stringify(ctx.request.body))['barrage'].split(':'));
     var data=JSON.parse(JSON.stringify(ctx.request.body))['barrage'].split(':');
-    con.query('insert ignore into barrage(video,time,data) values(?,?,?)',[getCookie(ctx,'video'),data[0],data[1]],(err,result)=>{
+    pool.getConnection((err,con)=>{
         if(err){
             throw err;
         }
-    });
-    if(getCookie(ctx,'token')){
-        con.query('update userdata set allexp=allexp+1 where nick=?',[getCookie(ctx,'token')],(err,result)=>{
+        con.query('insert ignore into barrage(video,time,data) values(?,?,?)',[getCookie(ctx,'video'),data[0],data[1]],(err,result)=>{
             if(err){
                 throw err;
             }
-        })
+        });
+        con.release();
+    })
+    if(getCookie(ctx,'token')){
+        pool.getConnection((err,con)=>{
+            if(err){
+                throw err;
+            }
+            con.query('update userdata set allexp=allexp+1 where nick=?',[getCookie(ctx,'token')],(err,result)=>{
+                if(err){
+                    throw err;
+                }
+            })
+            con.release();
+        })  
     }
     ctx.response.body={'code':1}
 })
@@ -130,16 +141,22 @@ router.post('/server',async (ctx,next)=>{
     let data=await query('select user from user where user=?',[ctx.request.body.username]);
     console.log(data);
     if(data.length===0){
-        con.query('insert into user(user,password) values(?,?)',[ctx.request.body.username,ctx.request.body.password],(err,result)=>{
-            if(err){
-                console.log(err.message);
-                throw err;
-            }
-        })
-        con.query('insert into userdata(nick,lv,allexp,coin,follow,fan) values(?,?,?,?,?,?)',[ctx.request.body.username,1,0,0,0,0,0],(err,result)=>{
+        pool.getConnection((err,con)=>{
             if(err){
                 throw err;
             }
+            con.query('insert into user(user,password) values(?,?)',[ctx.request.body.username,ctx.request.body.password],(err,result)=>{
+                if(err){
+                    console.log(err.message);
+                    throw err;
+                }
+            })
+            con.query('insert into userdata(nick,lv,allexp,coin,follow,fan) values(?,?,?,?,?,?)',[ctx.request.body.username,1,0,0,0,0,0],(err,result)=>{
+                if(err){
+                    throw err;
+                }
+            })
+            con.release();
         })
         ctx.response.body=JSON.stringify({'code':1});
     }else{
@@ -173,12 +190,18 @@ console.log('Listen...');
 //同步操作mysql
 function query( sql, values ) {
     return new Promise(( resolve, reject ) => {
-        con.query(sql,values,(err,result)=>{
+        pool.getConnection((err,con)=>{
             if(err){
                 reject(err);
             }
-            resolve(result);
-        })
+            con.query(sql,values,(err,result)=>{
+                if(err){
+                    reject(err);
+                }
+                resolve(result);
+            })
+            con.release();
+        })   
     })
 }
 
